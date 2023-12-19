@@ -106,14 +106,6 @@ ggsave(paste("images\\pheno_corr", trial_interest, Sys.Date(), ".png", sep = "_"
 )
 
 # Check design experimental
-
-
-# Rep_number == 3 was removed from 2021103MDAYT_quan, 
-# due to there were several missing values
-# my_dat_1 <- trial_rm_sd %>% filter(trial_name 
-#                                    %in% c("2021103MDAYT_quan"), 
-#                                    !rep_number == 3)
-
 my_dat <- trial_rm_sd %>% 
   add_column(block = NA) %>% mutate(block = as.factor(block)) 
 
@@ -130,11 +122,6 @@ results <- check_design_met(
   row = "row_number",
   block = "block"
 )
-
-# shared clones
-shared <- plot(results, type = "connectivity")
-ggsave(paste('images\\shared_', trial_interest, Sys.Date(), ".png", sep = "_"),
-       plot = shared, units = "in", dpi = 300, width = 8, height = 6)
 
 summary <- results$summ_traits 
 
@@ -184,7 +171,13 @@ for (i in 1:length(trials)) {
   master_data[[paste0("BLUP_BLUE_", trials[i])]] <- blue_blup
 }
 
+# Save the spatial correction plots
+folder = paste0(here::here("output"), "/")
+pdf(paste(folder, "01_", trial_interest, "_spatial_correction_", Sys.Date(), 
+          ".pdf", sep = ""), width = 8, height = 6)
 plot(obj, type = "spatial") 
+dev.off()
+
 
 ## Single heritability
 single_h2 <- obj$resum_fitted_model[ ,1:3] %>% 
@@ -199,278 +192,18 @@ single_h2 %>%
   write.table("clipboard", sep = "\t", col.names = T, row.names = F, na = "")
 
 # ---------------------------------------------------------------------------
-traits_to_remove <- c("root_number_commercial",
-                      "root_peduncle1_3",
-                      "root_rot_number",
-                      "root_shape1_6",	
-                      "root_type1_5",
-                      "root_weight_plot",
-                      "starch_content",
-                      "starch_yield_ha",
-                      "vigor1_5",
-                      "yield_ha",
-                      "carotenoid1_8",
-                      "CMD_1mon",
-                      "CMD_6mon",
-                      "CMD_harvest",
-                      "germination_perc")
-
-met_results <- met_analysis(obj, 
-                            filter_traits = 
-                            trait_ideal[!trait_ideal %in% c(traits_to_remove)],
-                            h2_filter = 0.09,
-                            progress = TRUE
-)
-
-
-# h2 gxe
-master_data[["h2_gxe"]] <- 
-  met_results$heritability %>% 
-  arrange(desc(h2)) %>%
-  mutate(across(where(is.numeric), round, 2))
-
-master_data$h2_gxe %>%
-  write.table("clipboard", col.names = T, row.names = F, sep = "\t")
 
 # BLUPs gxe
 BLUPs_table <- 
-  met_results$overall_BLUPs %>% 
-  select(-c(std.error, status)) %>% 
-  group_by(genotype) %>% 
-  spread(trait, value = predicted.value) %>% 
+  blue_blup %>% 
+  select(genotype, starts_with("BLUPs")) %>% 
   rename("accession_name" = genotype) %>% 
-  mutate(across(where(is.numeric), round, 2)) %>% 
-  ungroup() 
-#save the BLUPs data
-master_data[[paste0("BLUPs_", "gxe")]] <- BLUPs_table
-
-library(corrplot)
-
-# Genotypic Correlation: Locations
-# CMD_3mon
-# Open a PNG device
-png(paste0("images\\corrplot_CMD_3mon", trial_interest, Sys.Date(), ".png"), 
-    units = "in", res = 300,
-    width = 8, height = 10)
-
-# Create the correlation plot
-corrplot(met_results$VCOV$CMD_3mon$CORR, method = "color",  
-         type = "lower", order = "hclust", 
-         addCoef.col = "black", # Add coefficient of correlation
-         tl.col = "black",
-         tl.cex = 1.5, # Text label color and size,
-         number.cex = 1.5,
-         diag = TRUE)
-
-# Close the device
-dev.off()
-
-# branch_number
-png(paste0("images\\corrplot_branch_number", trial_interest, Sys.Date(), ".png"), 
-    units = "in", res = 300,
-    width = 8, height = 10)
-
-# Create the correlation plot
-corrplot(met_results$VCOV$branch_number$CORR, method = "color",  
-         type = "lower", order = "hclust", 
-         addCoef.col = "black", # Add coefficient of correlation
-         tl.col = "black",
-         tl.cex = 1.5, # Text label color and size,
-         number.cex = 1.5,
-         diag = TRUE)
-
-# Close the device
-dev.off()
-
-# plant_type
-png(paste0("images\\corrplot_plant_type", trial_interest, Sys.Date(), ".png"), 
-    units = "in", res = 300,
-    width = 8, height = 10)
-
-# Create the correlation plot
-corrplot(met_results$VCOV$plant_type$CORR, method = "color",  
-         type = "lower", order = "hclust", 
-         addCoef.col = "black", # Add coefficient of correlation
-         tl.col = "black",
-         tl.cex = 1.5, # Text label color and size,
-         number.cex = 1.5,
-         diag = TRUE)
-
-# Close the device
-dev.off()
-
-
-# height_1st_branch
-png(paste0("images\\corrplot_height_1st_branch", trial_interest, Sys.Date(), ".png"), 
-    units = "in", res = 300,
-    width = 8, height = 10)
-
-# Create the correlation plot
-corrplot(met_results$VCOV$height_1st_branch$CORR, method = "color",  
-         type = "lower", order = "hclust", 
-         addCoef.col = "black", # Add coefficient of correlation
-         tl.col = "black",
-         tl.cex = 1.5, # Text label color and size,
-         number.cex = 1.5,
-         diag = TRUE)
-
-# Close the device
-dev.off()
-
-
-
-## Save variance covariance correlation
-
-as.data.frame(do.call(rbind, met_results$VCOV))$CORR
-
-## Save the BLUEs or raw data across the trials
-variables <- colnames(BLUPs_table)[!grepl("accession_name", 
-                                          colnames(BLUPs_table))]
-for (var in variables) {
-  
-  cat("\n_______________")
-  cat("\nTRIAL:", var, "\n")
-  cat("_______________\n")
-  
-  blue_blup <-
-    obj$blues_blups %>%
-    select(trial, genotype, trait, BLUEs) %>%
-    spread(trait, value = BLUEs) %>%
-    select(trial, genotype, any_of(var)) %>%
-    group_by(trial, genotype) %>%
-    pivot_wider(names_from = trial, values_from = any_of(var)) %>%
-    right_join(BLUPs_table %>%
-                 select(accession_name, any_of(var)), by = c("genotype" = "accession_name")) %>%
-    arrange(is.na(across(where(is.numeric))), across(where(is.numeric))) %>%
-    mutate(across(where(is.numeric), round, 2))
-  # remove all NA columns
-  blue_blup <- blue_blup[, colSums(is.na(blue_blup)) < nrow(blue_blup)]
-  
-  master_data[[paste0("BLUP_BLUE_", var)]] <- blue_blup
-}
-
-## Stability analysis
-for (var in variables) {
-  
-  cat("\n_______________")
-  cat("\nTRIAL:", var, "\n")
-  cat("_______________\n")
-  
-  stab <- met_results$stability %>% 
-    filter(trait == var) %>% 
-    arrange(superiority) %>% 
-    pivot_wider(names_from = "trait", values_from = c('predicted.value')) 
-  
-  # Change colname
-  colnames(stab)[5] <- paste('BLUPs', colnames(stab)[5], sep = '_') 
-  colnames(stab)[c(2, 3, 4)] <- paste(colnames(stab)[c(2, 3, 4)], var, sep = '_') 
-  
-  master_data[[paste0("stability_", var)]] <- stab
-}
-
-
-ind <- grep("^stability_", names(master_data))
-
-# select elements that met the condition
-stab_values <- master_data[ind] %>% 
-  reduce(inner_join, by = "genotype") %>% 
-  select(!starts_with("BLUPs_")) %>% 
   mutate(across(where(is.numeric), round, 2))
 
-# remove multiple stability sheets
-master_data[ind] <- NULL
-
-## BLUE and BLUP data together
-BLUES_dona <- c("root_number_commercial",	"root_peduncle1_3",
-               "root_rot_number", "root_shape1_6", "root_type1_5", 
-               "root_weight_plot", "starch_content", "starch_yield_ha",	
-               "yield_ha")
-
-BLUEs_BLUPs <- 
-  obj$blues_blups %>%
-  select(trait, genotype, trial, BLUEs, seBLUEs) %>%
-  filter(trait %in% variables) %>% 
-  pivot_wider(names_from = "trait", values_from = c("BLUEs", "seBLUEs")) %>%
-  pivot_wider(names_from = trial, values_from = c(
-    paste("BLUEs", variables, sep = "_"),
-    paste("seBLUEs", variables, sep = "_")
-  )) %>%
-  left_join(
-    met_results$overall_BLUPs %>%
-      select(!status) %>%
-      rename(
-        BLUPs = predicted.value,
-        seBLUPs = std.error
-      ) %>%
-      pivot_wider(names_from = "trait", values_from = c("BLUPs", "seBLUPs")),
-    by = "genotype"
-  ) %>%
-  #arrange(desc(BLUPs_starch_content)) %>% 
-  arrange(is.na(across(where(is.numeric))), across(where(is.numeric))) %>%
-  mutate(across(where(is.numeric), round, 2))
-# remove all NA columns
-BLUEs_BLUPs <- BLUEs_BLUPs[, colSums(is.na(BLUEs_BLUPs)) < nrow(BLUEs_BLUPs)]
-
-
-# put all together stab_values with blues_blups
-BLUEs_BLUPs <- 
-  BLUEs_BLUPs %>% left_join(stab_values, by = 'genotype')  
-
-
-# add BLUES of dona location
-BLUES_dona_value <- obj$blues_blups %>% 
-  select(trait, genotype, trial, BLUEs, seBLUEs) %>% 
-  filter(trial == "202304DMPYT_dona", trait %in% BLUES_dona)
-
-BLUES_dona_wider <- BLUES_dona_value %>% 
-  pivot_wider(names_from = "trait", values_from = c("BLUEs", "seBLUEs")) %>%
-  pivot_wider(names_from = trial, values_from = c(
-    paste("BLUEs", BLUES_dona, sep = "_"),
-    paste("seBLUEs", BLUES_dona, sep = "_")
-  )) 
-
-BLUEs_BLUPs <- BLUEs_BLUPs %>% left_join(BLUES_dona_wider, by = "genotype")
-
-variables_BLUE_dona <- c(variables , BLUES_dona)
-header_sort = vector()
-for (i in 1:length(variables_BLUE_dona)) {
-  
-  header_sort = c(header_sort, 
-                  grep(variables_BLUE_dona[i], sort(names(BLUEs_BLUPs)), value=TRUE) 
-  )
-  
-}
-
-
-BLUEs_BLUPs <- BLUEs_BLUPs %>%
-  select(genotype, all_of(header_sort), -starts_with("se")) 
-
-
-# I need to add the BLUES of dona 
-BLUEs_BLUPs <- BLUEs_BLUPs %>% 
-  relocate(colnames(BLUEs_BLUPs)[str_detect(colnames(BLUEs_BLUPs), "starch_content")], .after = genotype)
-
-
-master_data[["BLUEs_BLUPs_MET"]] = BLUEs_BLUPs
-
-
-# Genotypic correlation
-# add the BLUES_dona_value  to BLUPs_table 
-BLUES_dona_BLUES <- BLUES_dona_value %>% pivot_wider(names_from = "trait", 
-                            values_from = c("BLUEs", "seBLUEs")) %>% 
-  select(genotype, starts_with("BLUEs"))
-
-# remove BLUES word from BLUES_dona_BLUES colnames
-colnames(BLUES_dona_BLUES)[-1] <- gsub("BLUEs_", "", names(BLUES_dona_BLUES)[-1])
-
-# merging both tables
-BLUPs_table <- BLUPs_table %>% left_join(BLUES_dona_BLUES, by = c("accession_name" = "genotype"))
-
-
-# save again the updated BLUPs table
 #save the BLUPs data
-master_data[[paste0("BLUPs_", "gxe")]] <- BLUPs_table
+master_data[[paste0("BLUPs_")]] <- BLUPs_table
 
+# genotypic correlation
 geno_cor <- gg_cor(
   colours = c("red", "white", "blue"),
   data = BLUPs_table, 
@@ -480,11 +213,10 @@ geno_cor <- gg_cor(
     axis.text.y = element_text(size = 14),
     axis.text.x = element_text(size = 14))
 
+geno_cor
 # save corr plot
 ggsave(paste("images\\geno_corr", trial_interest, Sys.Date(), ".png", sep = "_"),
        units = "in", dpi = 300, width = 14, height = 8)
-
-
 
 ## Save the master data results
 folder_output <- here::here("output//")
@@ -504,18 +236,18 @@ blupDF_kp <- read_excel(
         sel_file[1],
         sep = ""
   ),
-  sheet = paste0("BLUPs_", "gxe")
+  sheet = "BLUP_BLUE_202307DMF1C_tani"
 )
 
 
 ## Selection index
 colnames(blupDF_kp)
 
-index_traits <- c("starch_content", #"height_1st_branch", 
-                  "yield_ha", "plant_type")
+index_traits <- c("BLUPs_starch_content", 
+                  "BLUPs_yield_ha", "BLUPs_CMD_harvest")
 
 index_dat <- blupDF_kp %>%
-  select("accession_name", all_of(index_traits)) %>% 
+  select("genotype", all_of(index_traits)) %>% 
   drop_na()
 
 
@@ -562,7 +294,7 @@ selIndex <- function(Y, b, scale = FALSE) {
 
 ## Index selection
 res.pca <- pca_index(
-  data = index_dat, id = "accession_name",
+  data = index_dat, id = "genotype",
   variables = index_traits,
   b = c(10, 10, -5), percentage = 0.25
 )
@@ -581,14 +313,15 @@ selections %>%
 
 
 # Add index column to BLUEs_BLUPs_MET
-BLUEs_BLUPs <- 
-  master_data$BLUEs_BLUPs_MET %>% 
+blue_blup <- 
+  master_data$BLUP_BLUE_202307DMF1C_tani %>% 
   left_join(selections[-c(2:4)], by = c("genotype" = "accession_name")) %>% 
   relocate(index, selected, .before = 2)
 
-BLUEs_BLUPs <- BLUEs_BLUPs %>% 
-  arrange(is.na(selected))
-master_data[["BLUEs_BLUPs_MET"]] = BLUEs_BLUPs
+blue_blup <- blue_blup %>% 
+  arrange(is.na(selected)) %>% select(genotype, index, selected, 
+                                      contains("starch"), contains("yield_ha"), everything())
+master_data[["BLUP_BLUE_202307DMF1C_tani"]] = blue_blup
 
 
 ## Save the master data results

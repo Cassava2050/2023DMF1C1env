@@ -8,8 +8,8 @@ source("https://raw.githubusercontent.com/Cassava2050/PPD/main/utilities_tidy.R"
 folder <- here::here("data//")  
 file <- "phenotype.csv"
 skip_col <- 3 # Double check the number of columns skipped
-trial_interest <- "MDEPR"
-year_interest <- 2022
+trial_interest <- "DMF1C1"
+year_interest <- 2023
 
 # Loading Data
 # The function 'read_cassavabase' should be defined in the sourced script
@@ -66,9 +66,9 @@ vietnam_map <- map_data("world", region = "Vietnam")
 
 # Create a data frame with your locations
 locations <- data.frame(
-  Location = c("Tay Ninh", "Dong Nai"),
-  Latitude = c(11.3009, 11.1432),
-  Longitude = c(106.1107, 107.2742)
+  Location = "Tay Ninh",
+  Latitude = 11.3009,
+  Longitude = 106.1107
 )
 
 
@@ -104,7 +104,9 @@ accession_rep_ct
 
 # Harvesting time
 conducted_trials <- 
-  trial_standard %>% group_by(use_trial_name, use_plant_date,use_harvest_date, use_location) %>% 
+  trial_standard %>% add_column(use_harvest_date = "2023-December-08") %>% 
+  group_by(use_trial_name, use_plant_date, use_harvest_date, use_location) %>%
+  
   summarise(n_gen = n_distinct(use_accession_name)) %>% 
   mutate(harvesting_time = 
            interval(ymd(use_plant_date), ymd(use_harvest_date)) %>% as.period,
@@ -157,8 +159,7 @@ ggsave(paste("images\\bar", trial_interest, Sys.Date(), ".png", sep = "_"),
 ## Compute germination, yield, yield_starch
 trial_standard <- trial_standard %>%
   mutate(obs_harvest_number_plan =
-           case_when(str_detect(use_trial_name, "202301")  ~ 8,
-                     str_detect(use_trial_name, "202304")  ~ 8),
+         case_when(str_detect(use_trial_name, "202307")  ~ 4),
          obs_germination_perc = obs_germinated_number_plot/obs_planted_number_plot * 100,
          # 2) calculate area per plant
          area_plant = (use_plot_length*use_plot_width)/obs_planted_number_plot,
@@ -172,7 +173,7 @@ trial_standard <- trial_standard %>%
 # Plot the yield_v2 vs yield uploaded by Lizbeth
 library(plotly)
 
-p1 <- trial_standard_new %>% ggplot() +
+p1 <- trial_standard %>% ggplot() +
   geom_point(aes(x = obs_yield_ha, y = obs_yield_ha_v2, color = use_plot_number), show.legend = F) +
   facet_wrap(~use_trial_name) +
   theme_xiaofei()
@@ -222,7 +223,7 @@ plot_bxp <- trial_tidy %>%
   )) %>%
   ggplot(aes(x = trial_name, y = values)) +
   facet_wrap(~var,
-             ncol = 7, scales = "free_y"
+             ncol = 6, scales = "free_y"
   ) + 
   geom_violin(fill = "gray") +
   geom_boxplot(width = 0.2) +
