@@ -1,5 +1,4 @@
 # 2023DMF1C1env
-# 2023MDEPR2env
 #### The F1C1 trial of the pipeline - CMD-resistance cassava for starch and animal feed
 #### TPE: subhumid tropics
 #### locations: Tay Nihn, Vietnam
